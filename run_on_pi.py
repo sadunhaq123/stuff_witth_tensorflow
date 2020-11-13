@@ -13,6 +13,7 @@ TCP_IP1 = "10.0.0.5" #Ip of desktop machine (remote)
 PORT1 = 8085
 PORT4 = 8086
 BUFFER_SIZE = 4096
+partition_point = 5
 
 
 
@@ -79,7 +80,7 @@ def run_test_harness():
 
 
     #Send partition point to Desktop
-    partition_point = 7
+    #partition_point = 7
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((TCP_IP1, PORT1))
 
