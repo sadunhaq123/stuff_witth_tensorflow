@@ -8,8 +8,8 @@ import pickle
 
 
 #IP Parameters Server
-TCP_IP2 = "10.0.0.5"
-TCP_IP3 = "10.0.0.3"
+TCP_IP2 = "10.0.0.5" #IP of Desktop machine(self)
+TCP_IP3 = "10.0.0.3" #IP of Pi (remote Pi)
 PORT2 = 8085
 PORT4 = 8086
 BUFFER_SIZE = 4096
@@ -94,7 +94,7 @@ def run_test_harness():
 
     #Run the data in the partition from 0 to given value, and send the results to the Pi.
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((TCP_IP3, PORT4))
+    s.connect((TCP_IP3, PORT4)) #Change TCP_IP3 to TCP_IP2, if both the files are run on the same machine!
 
     # filename = 'final_output.npy'
     # outfile = open(filename,'wb')
