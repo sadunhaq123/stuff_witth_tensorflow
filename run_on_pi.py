@@ -8,7 +8,7 @@ import pickle
 
 
 #IP Parameters Client
-TCP_IP1 = "10.0.0.5"
+TCP_IP1 = "10.0.0.5" #Ip of desktop machine (remote)
 #TCP_IP1 = "10.0.0.3"
 PORT1 = 8085
 PORT4 = 8086
