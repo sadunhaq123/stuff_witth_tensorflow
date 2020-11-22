@@ -11,11 +11,11 @@ import matplotlib.pyplot as plt
 
 #IP Parameters Client
 TCP_IP1 = "10.0.0.5"
-#TCP_IP1 = "10.0.0.3"
+TCP_IP2 = "10.0.0.3"
 PORT1 = 8085
 PORT4 = 8086
 BUFFER_SIZE = 4096
-partition_point = 6
+partition_point = 0
 
 
 
@@ -46,7 +46,7 @@ def prep_pixels(train, test):
 
 def server_call(model, inputs, partition_point):
     count = 0
-    for layer in model.layers[partition_point:]:
+    for layer in model.layers[0: partition_point]:
         inputs = layer(inputs)
         print("Layer ", layer)
         print(count)
@@ -73,21 +73,26 @@ def run_test_harness():
     trainX, testX = prep_pixels(trainX, testX)
     # load model
     model = load_model('final_model.h5')
+    #model = load_model('final_model_custom_split.h5')
     model.summary()
 
     #We take one label to check against.
-    testY = testY[5]
+    testY = testY[0]
     testY = np.expand_dims(testY, axis=0)
 
     #We take one input to predict
-    testX = testX[5]
+    testX = testX[0]
     #We expand its dimension by 1, as the first layer expects it in that manner
     testX = np.expand_dims(testX, axis=0)
 
 
+
+
+    y_tensor = server_call(model, testX, partition_point)
+
     dictionary_with_partition_and_input = {
         'partition_point': partition_point,
-        'input_data': testX
+        'input_data': y_tensor
     }
 
     #Send partition point and input to Desktop
@@ -120,15 +125,18 @@ def run_test_harness():
 
 
     print("Receiving")
-    y_tensor = server_call(model, part_outputs, partition_point)
+    #y_tensor = server_call(model, part_outputs, partition_point)
 
 
     #Applying argmax and calculating accuracy
     print(testY)
-    print(y_tensor)
-    y_pred = np.argmax(y_tensor, axis=1)
+    print(part_outputs)
+    y_pred = np.argmax(part_outputs, axis=1)
     Y = np.argmax(testY, axis=1)
-    accuracy = ((y_pred == Y)) * 100
+    print(y_pred)
+    print(Y)
+    accuracy = ((y_pred == Y).mean()) * 100
+    #accuracy = ((y_pred == Y)) * 100
     print('accuracy:', accuracy, '%')
 
 
@@ -140,6 +148,7 @@ def run_test_harness_zero():
     trainX, testX = prep_pixels(trainX, testX)
     # load model
     model = load_model('final_model.h5')
+    #model = load_model('final_model_custom_split.h5')
     model.summary()
     testY = testY[0]
     testY = np.expand_dims(testY, axis=0)
@@ -152,6 +161,9 @@ def run_test_harness_zero():
 
 
     y_tensor = server_call_zero(model, testX)
+    #y_tensor_send = y_tensor.numpy()
+    print(y_tensor)
+    print(y_tensor.shape)
 
 
 
@@ -160,14 +172,85 @@ def run_test_harness_zero():
     Y = np.argmax(testY, axis=1)
     print(y_pred)
     print(Y)
-    accuracy = ((y_pred == Y)) * 100
+    accuracy = ((y_pred == Y).mean()) * 100
     print('accuracy:', accuracy, '%')
 
 
 # entry point, run the test harness
 
-if (partition_point == 0): #run on the Pi only
+def run_test_harness_eight():
+    # load dataset
+    trainX, trainY, testX, testY = load_dataset()
+    # prepare pixel data
+    trainX, testX = prep_pixels(trainX, testX)
+    # load model
+    model = load_model('final_model.h5')
+    #model = load_model('final_model_custom_split.h5')
+    model.summary()
+    testY = testY[0]
+    testY = np.expand_dims(testY, axis=0)
+
+
+
+    testX = testX[0]
+    testX = np.expand_dims(testX, axis=0)
+
+
+
+    #y_tensor = server_call_zero(model, testX)
+    #y_tensor_send = y_tensor.numpy()
+
+    dictionary_with_partition_and_input = {
+        'partition_point': partition_point,
+        'input_data': testX
+    }
+
+    # Send partition point and input to Desktop
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((TCP_IP1, PORT1))
+    data_final = pickle.dumps(dictionary_with_partition_and_input, protocol=pickle.HIGHEST_PROTOCOL)
+
+    s.sendall(data_final)
+
+    s.close()
+
+    # After sending partition point and inputs, waiting for results after the partition
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind((TCP_IP1, PORT4))
+    print('Waiting for results from cloud')
+    s.listen(2)
+    conn, addr = s.accept()
+    data = []
+    print('Device:', addr)
+    while 1:
+        tensor = conn.recv(BUFFER_SIZE)
+        if not tensor: break
+        data.append(tensor)
+
+    part_outputs = pickle.loads(b"".join(data))
+
+    conn.close()
+
+    print("Receiving")
+
+
+    print(part_outputs)
+    print(part_outputs.shape)
+
+
+
+    #Applying argmax and calculating accuracy
+    y_pred = np.argmax(part_outputs, axis=1)
+    Y = np.argmax(testY, axis=1)
+    print(y_pred)
+    print(Y)
+    accuracy = ((y_pred == Y).mean()) * 100
+    print('accuracy:', accuracy, '%')
+
+if (partition_point == 8):
     run_test_harness_zero()
+elif (partition_point == 0):
+    run_test_harness_eight()
 
 else:
     run_test_harness()
